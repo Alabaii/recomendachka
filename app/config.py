@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     DB_USER: str
     DB_PASS: str
     DB_NAME: str
-    MODE: Literal["DEV", "TEST", "PROD"]
+    #MODE: Literal["DEV", "TEST", "PROD"]
 
     @property
     def DATABASE_URL(self):

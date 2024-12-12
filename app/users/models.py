@@ -1,6 +1,7 @@
 
 from typing import TYPE_CHECKING, Literal
-from sqlalchemy import Column, Date, DateTime, Integer, String
+import uuid
+from sqlalchemy import UUID, Column, Date, DateTime, Integer, String
 from sqlalchemy.orm import relationship, mapped_column, Mapped
 
 from app.database import Base
@@ -11,7 +12,7 @@ from datetime import date
 class Users(Base):
     __tablename__ = "users"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     first_name: Mapped[str]
     surname: Mapped[str]
     date_created: Mapped[date] = mapped_column(Date)
