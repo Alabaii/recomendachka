@@ -4,7 +4,9 @@ from typing import Literal, Optional
 from fastapi import APIRouter, HTTPException, Query,status
 from pydantic import UUID4
 from sqlalchemy import UUID
-
+from fastapi_cache import FastAPICache
+from fastapi_cache.backends.redis import RedisBackend
+from fastapi_cache.decorator import cache
 
 from app.users.dao import UsersDAO
 from app.users.schemas import UserCreate, SUsers
@@ -62,7 +64,8 @@ async def get_users(
         raise HTTPException(status_code=404, detail="Users not found")
     return result
 
-@router.get("/find_by_id/{id}", summary="Get user by id") 
+@router.get("/find_by_id/{id}", summary="Get user by id")
+@cache(expire=60)
 async def get_users_by_id(id)-> SUsers:
     """
     Возвращает запись из таблицы users по ID.
@@ -146,14 +149,13 @@ async def delete_users(
     if profession:
         filter_params['profession'] = profession
 
-    # Логируем передаваемые фильтры
     logger.info(f"Attempting to delete with filters: {filter_params}")
     
     try:
-        # Вызов DAO-метода для удаления
+        
         result = await UsersDAO.delete(**filter_params)
 
-        if result is None:  # Если записи не найдены
+        if result is None:  
             logger.error(f"No records found for filters: {filter_params}")
             raise HTTPException(status_code=404, detail="Record not found")
         
