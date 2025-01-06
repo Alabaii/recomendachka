@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-
+from app.users.router import router as router_users
 
 app = FastAPI(
     title="Бронирование Отелей",
@@ -8,7 +8,7 @@ app = FastAPI(
 )
 
 
-
+app.include_router(router_users)
 
 
 @app.get("/")
