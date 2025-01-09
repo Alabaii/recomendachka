@@ -1,3 +1,4 @@
+
 from datetime import datetime, date
 from typing import Literal
 from uuid import UUID
@@ -18,7 +19,7 @@ class SUsers(BaseModel):
     experience : float
 
     class Config:
-        orm_mode = True
+        from_attrributes = True
         
 class UserCreate(BaseModel):
     first_name: str
@@ -33,4 +34,4 @@ class UserCreate(BaseModel):
 
 
     class Config:
-        orm_mode = True
+        from_attrributes = True

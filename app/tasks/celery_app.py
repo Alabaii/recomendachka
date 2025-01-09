@@ -15,7 +15,7 @@ celery_worker = Celery(
 celery_worker.conf.beat_schedule = {
     "luboe-nazvanie": {
         "task": "periodic_task",
-        "schedule": 5,  # секунды
-        # "schedule": crontab(minute="30", hour="15"),
+        #"schedule": 5,  # секунды
+        "schedule": crontab(minute="00", hour="00"),
     }
 }

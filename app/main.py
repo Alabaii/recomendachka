@@ -9,6 +9,7 @@ from fastapi_cache.decorator import cache
 from redis import asyncio as aioredis
 
 from app.users.router import router as router_users
+from app.city.router import router as router_city
 from app.config import settings
 
 @asynccontextmanager
@@ -28,7 +29,7 @@ app = FastAPI(
 
 
 app.include_router(router_users)
-
+app.include_router(router_city)
 @cache()
 async def get_cache():
     return 1
