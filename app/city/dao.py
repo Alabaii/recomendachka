@@ -1,6 +1,8 @@
+import asyncio
 from datetime import timedelta
 import json
 import uuid
+from fastapi import HTTPException
 from geopy.distance import geodesic
 from geopy.geocoders import Nominatim
 # from sentence_transformers import SentenceTransformer, util
@@ -13,7 +15,6 @@ from dataclasses import asdict
 from redis import asyncio as aioredis
 from sqlalchemy import insert, select
 from app.city.models import City
-from sqlalchemy.ext.asyncio import AsyncSession
 from app.dao.base import BaseDAO
 
 from app.database import async_session_maker
@@ -56,25 +57,29 @@ class CityDAO(BaseDAO):
 
 
     @classmethod
-    @cache(expire=604800)
     async def get_or_create_city(cls, city_name: str):
         """Fetch city info from cache, database, or geolocator."""
         # Check Redis cache
         redis_backend = FastAPICache.get_backend()
         cached_city = await redis_backend.get(f"city:{city_name}")
         if cached_city:
-            return cached_city
+            return json.loads(cached_city)
 
         # Query database
         async with async_session_maker() as session:
             result = await session.execute(select(cls.model).where(cls.model.name == city_name))
-            city = result.scalar_one_or_none()
+            city = result.scalars().first()  # Вернет первую строку из результатов или None
+
 
             if not city:
                 # Use geolocator if not found
+
+                print("1")
+                await asyncio.sleep(1) 
                 location = geolocator.geocode(city_name)
                 if not location:
-                    return None
+                    # City not found
+                    raise HTTPException(status_code = 404 , detail="City not found")
 
                 # Extract country and create city object
                 city_data = {
@@ -110,4 +115,34 @@ class CityDAO(BaseDAO):
 
             # Write city to cache and return as JSON
             await redis_backend.set(f"city:{city_name}", city_json, expire=604800)
-            return city_json
+
+            return json.loads(city_json)
+
+
+    @classmethod
+    async def calculate_geo_similarity(cls, city1: str, city2: str) -> float:
+        """Асинхронно вычисляет географическое сходство между двумя городами."""
+
+        # Вызываем асинхронные методы get_or_create_city
+        city1_info = await cls.get_or_create_city(city1)
+        city2_info = await cls.get_or_create_city(city2)
+
+        if not city1_info or not city2_info:
+            return 0.0
+        
+        
+        distance = geodesic(
+            (city1_info["latitude"], city1_info["longitude"]),
+            (city2_info["latitude"], city2_info["longitude"])
+        ).kilometers
+
+        print(f"Distance between {city1} and {city2}: {distance} km")
+        if distance < 50:
+            return 1.0
+        elif distance < 500:
+            return 0.5
+        elif  city1_info["country"] == city2_info["country"]:
+            return 0.8
+        else:
+            return 0.0
+        
