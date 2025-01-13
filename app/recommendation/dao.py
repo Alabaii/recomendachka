@@ -113,10 +113,15 @@ class RecommendationDAO(BaseDAO):
         
         description1_en = await cls.detect_language_and_prepare(description1)
         description2_en = await cls.detect_language_and_prepare(description2)
-        
+        if not description1_en or not description2_en:
+            print("One or both descriptions are empty after preprocessing.")
+            return 0.0
         # Combine descriptions
         combined_description = f"{description1_en} {description2_en}"
-        
+                # If the combined description is empty, return 0 similarity
+        if not combined_description.strip():
+            print("Combined description is empty.")
+            return 0.0
         # Calculate TF-IDF
         vectorizer = TfidfVectorizer(stop_words="english")
         tfidf_matrix = vectorizer.fit_transform([description1_en, description2_en, combined_description])
@@ -146,12 +151,14 @@ class RecommendationDAO(BaseDAO):
         )
     @classmethod
     async def calculate_similarity_for_all(cls,target_user, all_users, session: AsyncSession):
+        semaphore = asyncio.Semaphore(10)
         async def worker(user):
-            similarity = await cls.calculate_similarity(target_user, user)
-            return {
-                "user_id": user.id,
-                "similarity": similarity
-            }
+            async with semaphore:
+                similarity = await cls.calculate_similarity(target_user, user)
+                return {
+                    "user_id": user.id,
+                    "similarity": similarity
+                }
 
         tasks = [worker(user) for user in all_users]
         results = await asyncio.gather(*tasks)

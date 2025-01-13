@@ -1,4 +1,5 @@
 from datetime import date
+from uuid import UUID
 from fastapi import APIRouter, HTTPException, Query,status
 from sqlalchemy import delete, select
 
@@ -87,7 +88,8 @@ async def calculate_similarity(
     return result
 
 @router.get("/recommendations/{user_id}")
-async def get_recommendations(user_id: str):
+async def get_recommendations(user_id: UUID):
+    
     async with async_session_maker() as session:
         target_user = await session.get(Users, user_id)
         if not target_user:
@@ -102,7 +104,7 @@ async def get_recommendations(user_id: str):
         recommendations.sort(key=lambda x: x["similarity"], reverse=True)
         return recommendations[:10]
 @router.post("/update_recommendations/{user_id}")
-async def update_recommendations_for_user(user_id: str):
+async def update_recommendations_for_user(user_id: UUID)-> dict:
     async with async_session_maker() as session:
         target_user = await session.get(Users, user_id)
         if not target_user:
@@ -124,3 +126,25 @@ async def update_recommendations_for_user(user_id: str):
         await session.commit()
         return {"status": "updated"}
 
+@router.get("/recommendations_from_database/{user_id}")
+async def get_top_recommendations(user_id: UUID):
+    try:
+        async with async_session_maker() as session:
+            result = await session.execute(
+                select(Recommendation)
+                .where(Recommendation.user_id == user_id)
+                .order_by(Recommendation.similarity.desc())  
+            )
+            
+            recommendations = result.scalars().all()
+
+            if not recommendations:
+                raise HTTPException(status_code=404, detail="No recommendations found for this user")
+
+            # Ограничиваем результат первыми 5 рекомендациями
+            top_recommendations = recommendations[:5]
+
+            return top_recommendations
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error occurred: {e}")
